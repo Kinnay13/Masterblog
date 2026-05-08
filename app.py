@@ -1,8 +1,11 @@
-from flask import Flask, render_template, request, redirect, url_for
+"""Flask Blog Application"""
+
 import json
 import os
+from flask import Flask, render_template, request, redirect, url_for
 
 app = Flask(__name__)
+
 
 def load_posts():
     """Lädt die Blogbeiträge aus der JSON-Datei"""
@@ -12,11 +15,13 @@ def load_posts():
             return json.load(f)
     return []
 
+
 def save_posts(posts):
     """Speichert die Blogbeiträge in der JSON-Datei"""
     posts_file = os.path.join(os.path.dirname(__file__), 'posts.json')
     with open(posts_file, 'w', encoding='utf-8') as f:
         json.dump(posts, f, indent=2, ensure_ascii=False)
+
 
 def get_next_id(posts):
     """Generiert die nächste eindeutige ID für einen neuen Beitrag"""
@@ -24,11 +29,13 @@ def get_next_id(posts):
         return 1
     return max(post['id'] for post in posts) + 1
 
+
 @app.route('/')
 def index():
     """Zeigt alle Blogbeiträge auf der Startseite an"""
     posts = load_posts()
     return render_template('index.html', posts=posts)
+
 
 @app.route('/add', methods=['GET', 'POST'])
 def add():
@@ -38,14 +45,14 @@ def add():
         author = request.form.get('author')
         title = request.form.get('title')
         content = request.form.get('content')
-        
+
         # Validierung: Alle Felder müssen ausgefüllt sein
         if not author or not title or not content:
             return render_template('add.html', error='Alle Felder sind erforderlich!')
-        
+
         # Existierende Beiträge laden
         posts = load_posts()
-        
+
         # Neuen Beitrag erstellen
         new_post = {
             'id': get_next_id(posts),
@@ -53,32 +60,80 @@ def add():
             'title': title,
             'content': content
         }
-        
+
         # Neuen Beitrag zur Liste hinzufügen
         posts.append(new_post)
-        
+
         # Beiträge speichern
         save_posts(posts)
-        
+
         # Benutzer zur Startseite umleiten
         return redirect(url_for('index'))
-    
+
     return render_template('add.html')
+
+
+@app.route('/edit/<int:post_id>')
+def edit(post_id):
+    """Zeigt das Formular zum Bearbeiten eines Blogeintrags"""
+    posts = load_posts()
+
+    # Beitrag mit der angegebenen ID finden
+    post = next((p for p in posts if p['id'] == post_id), None)
+
+    if post is None:
+        return redirect(url_for('index'))  # Wenn Beitrag nicht existiert, zur Startseite
+
+    return render_template('edit.html', post=post)
+
+
+@app.route('/update/<int:post_id>', methods=['POST'])
+def update(post_id):
+    """Aktualisiert einen Blogeintrag mit den neuen Daten"""
+    # Daten aus dem Formular holen
+    author = request.form.get('author')
+    title = request.form.get('title')
+    content = request.form.get('content')
+
+    # Validierung
+    if not author or not title or not content:
+        posts = load_posts()
+        post = next((p for p in posts if p['id'] == post_id), None)
+        return render_template('edit.html', post=post, error='Alle Felder sind erforderlich!')
+
+    # Existierende Beiträge laden
+    posts = load_posts()
+
+    # Beitrag mit der angegebenen ID finden und aktualisieren
+    for post in posts:
+        if post['id'] == post_id:
+            post['author'] = author
+            post['title'] = title
+            post['content'] = content
+            break
+
+    # Aktualisierte Beitragsliste speichern
+    save_posts(posts)
+
+    # Benutzer zur Startseite umleiten
+    return redirect(url_for('index'))
+
 
 @app.route('/delete/<int:post_id>')
 def delete(post_id):
     """Löscht einen Blogeintrag mit der angegebenen ID"""
     # Existierende Beiträge laden
     posts = load_posts()
-    
+
     # Beitrag mit der angegebenen ID finden und entfernen
     posts = [post for post in posts if post['id'] != post_id]
-    
+
     # Aktualisierte Beitragsliste speichern
     save_posts(posts)
-    
+
     # Benutzer zur Startseite umleiten
     return redirect(url_for('index'))
+
 
 if __name__ == '__main__':
     app.run(debug=True)
