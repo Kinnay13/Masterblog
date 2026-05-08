@@ -65,5 +65,20 @@ def add():
     
     return render_template('add.html')
 
+@app.route('/delete/<int:post_id>')
+def delete(post_id):
+    """Löscht einen Blogeintrag mit der angegebenen ID"""
+    # Existierende Beiträge laden
+    posts = load_posts()
+    
+    # Beitrag mit der angegebenen ID finden und entfernen
+    posts = [post for post in posts if post['id'] != post_id]
+    
+    # Aktualisierte Beitragsliste speichern
+    save_posts(posts)
+    
+    # Benutzer zur Startseite umleiten
+    return redirect(url_for('index'))
+
 if __name__ == '__main__':
     app.run(debug=True)
